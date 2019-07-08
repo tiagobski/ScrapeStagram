@@ -1,0 +1,17 @@
+TABLE `targets`
+int id_targets
+txt account_targets
+
+TABLE `posts`
+int id_posts
+ref targets_posts
+
+TABLE `agglomerates`
+int id_agglomerates
+txt name_agglomerates
+txt desc_agglomerates
+
+TABLE `agglomerates_has_targets`
+int id_agglomerates_has_targets
+ref ref_targets_1
+ref reg_targets_2
