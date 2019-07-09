@@ -1,93 +1,87 @@
-<html>
-<head>
-    <meta HTTP-EQUIV="Content-type" CONTENT="text/html; charset=UTF-8">
-</head>
-<body>
-
 <?php
 
 /* Environment */
+require_once('config.php');
+require_once('functions.php');
+//require_once('controller/database.controller.php');
+require_once('controller/accounts.controller.php');
+require_once('controller/posts.controller.php');
+require_once('controller/locations.controller.php');
+//$dbController = DatabaseController::getInstance();
+$accountsController = AccountsController::getInstance();
+$postsController = PostsController::getInstance();
+$locationsController = LocationsController::getInstance();
 
-ini_set('xdebug.var_display_max_depth', -1);
-ini_set('xdebug.var_display_max_children', -1);
-ini_set('xdebug.var_display_max_data', -1);
-
-/* Functions */
-
-function getStringBetween($string, $start, $end) {
-    preg_match_all( '/' . preg_quote( $start, '/') . '(.*?)' . preg_quote( $end, '/') . '/', $string, $matches);
-    return $matches[1];
+/* Pre-execution checks */
+if ( isset($_GET['username']) && !is_null($_GET['username']) )
+{
+    // Web browser launch.
+    $username = $_GET['username'];
 }
-
-function getInstagramPageJSON($url) {
-    $html = file_get_contents($url);
-    $data = getStringBetween($html, '<script type="text/javascript">window._sharedData = ', ';</script>')[0];
-    $jsonObject = json_decode($data, true);
-    return $jsonObject;
+else if ( isset($argc) && isset($argv[1]) )
+{
+    // Command line launch.
+    // argc = argument count.
+    // argv = argument values. $argv[0] = script name.
+    $username = $argv[1];
 }
-
-function formInstagramPostUrl($shortcode) {
-    $url = "https://www.instagram.com/p/" . $shortcode . "/";
-    return $url;
+else
+{
+    die('Username unset.');
 }
 
 /* Algo */
+$data = Scrape($username);
 
-$url = "https://www.instagram.com/supercarros.pt/";
+// Check if account exists, or add it
+$account_id = null;
+$account = $accountsController->get('external_id', $data['profile']['id']);
 
-// Mining profile feed - Get the Instagram's profile JSON content, create pointer to the 'posts' array key
-$jsonObject = getInstagramPageJSON($url);
-$postsObject = $jsonObject['entry_data']['ProfilePage'][0]['graphql']['user']['edge_owner_to_timeline_media']['edges'];
-//var_dump($postsObject);
-
-// Mining single posts - Filling the data array
-$data = array();
-foreach ( $postsObject as $key => $value )
+if ( is_null($account) )
 {
-    // Get and save the shortcode
-    $shortcode = $postsObject[$key]['node']['shortcode'];
-    $data[$key]['shortcode'] = $shortcode;
-
-    // Get and save the description
-    $description = $postsObject[$key]['node']['edge_media_to_caption']['edges'][0]['node']['text'];
-    $data[$key]['description'] = $description;
-
-    // Generate URL to the single post page
-    $postUrl = formInstagramPostUrl($shortcode);
-    $data[$key]['url'] = $postUrl;
-
-    // Get post content
-    $data[$key]['images'] = array();
-
-    $singlePostObject = getInstagramPageJSON($postUrl);
-
-    if ( isset($singlePostObject['entry_data']['PostPage'][0]['graphql']['shortcode_media']['edge_sidecar_to_children']) ) {
-        // Post has multiple images
-        $singlePostImages = $singlePostObject['entry_data']['PostPage'][0]['graphql']['shortcode_media']['edge_sidecar_to_children']['edges'];
-
-        foreach ($singlePostImages as $keyImg => $valueImg) {
-            // Each image is available in multiple sizes
-            $imageSizes = $singlePostImages[$keyImg]['node']['display_resources'];
-            // Pushing all the imagesizes[src, config_width, config_height] to the data array
-            array_push($data[$key]['images'], $imageSizes);
-        }
-    } else {
-        // Post has only one image
-        $singlePostImages = $singlePostObject['entry_data']['PostPage'][0]['graphql']['shortcode_media']['display_resources'];
-        // Pushing all the imagesizes[src, config_width, config_height] to the data array
-        array_push($data[$key]['images'], $singlePostImages);
-    }
+    echo 'Adding account.' . PHP_EOL;
+    $account_id = $accountsController->insert($username, $data['profile']['id'], $data['profile']['external_url'], $data['profile']['biography'], $data['profile']['profile_pic'], $data['profile']['count_followers'], $data['profile']['count_following']);
+} else
+{
+    echo 'Account already exists.' . PHP_EOL;
+    $account_id = $account[0]['id_accounts'];
 }
 
+// Check if posts exist, or add them
+
+foreach ( $data['posts'] as $key => $value )
+{
+    // Break cycle if post already exists
+    $post_exists_check = $postsController->get( $value['id'] );
+    if ( !is_null($post_exists_check) )
+    {
+        echo 'Break cycle: Profile is up to date. Most recent post with id \'' . $value['id'] . '\' already exists.' . PHP_EOL;
+        break;
+    }
+
+    // Location
+    $location_id = 1;   // 1 is the PK for the 'Undefined' location
+    if ( isset($value['location']) )
+    {
+        $location_id = $locationsController->get($value['location']['id']);
+
+        // Location doesnt exist, add it
+        if ( is_null($location_id) )
+        {
+            $location_id = $locationsController->insert($value['location']['id'], $value['location']['slug'], $value['location']['name']);
+            echo 'Adding location id \'' . $location_id . '\' (' . $value['location']['name'] . ')' . PHP_EOL;
+        }
+    }
+
+    // Adjust content for db insertion
+    $external_url = FormInstagramPostUrl( $value['shortcode'] );
+    $value['description'] = mb_convert_encoding($value['description'], 'UTF-8', 'Windows-1252');
+
+    // Insert post
+    $post_id = $postsController->insert($account_id, $location_id, $value['id'], $external_url, $value['shortcode'], $value['description']);
+    echo 'Inserted post with id \'' . $post_id . '\'' . PHP_EOL;
+}
+
+
 /* Output */
-
-echo "<hr><h1>DATA ARRAY</h1>";
-
-var_dump($data);
-
-echo "<hr>";
-?>
-
-</body>
-</html>
-
+//var_dump($data);
