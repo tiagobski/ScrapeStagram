@@ -28,24 +28,38 @@ class PostsController
      * Functions
      * ================================================================== */
 
-    public function get()
+    public function get($factor_value = false)
     {
-		throw new Exception('Not implemented');
+      $queryInfo = [
+        'query' => 'SELECT * FROM posts WHERE external_id_posts = ?',
+        'parameters' => array('i', $factor_value),
+        'close' => FALSE
+      ];
+
+      $queryResult = $this->db->query($queryInfo['query'], $queryInfo['parameters'], $queryInfo['close']);
+      return $queryResult;
     }
 
-    public function insert()
+    public function insert($account_id, $location_id, $post_external_id, $post_external_url, $post_shortcode, $post_description)
     {
-		throw new Exception('Not implemented');
+      $queryInfo = [
+        'query' => 'INSERT INTO posts (ref_accounts_posts, ref_locations_posts, external_id_posts, external_url_posts, shortcode_posts, description_posts) VALUES (?, ?, ?, ?, ?, ?)',
+        'parameters' => array('iiisss', $account_id, $location_id, $post_external_id, $post_external_url, $post_shortcode, $post_description),
+        'close' => TRUE
+      ];
+
+      $queryResult = $this->db->query($queryInfo['query'], $queryInfo['parameters'], $queryInfo['close']);
+      return $queryResult;
     }
 
     public function update()
     {
-		throw new Exception('Not implemented');
+		  throw new Exception('Not implemented');
     }
 
     public function delete()
     {
-		throw new Exception('Not implemented');
+		  throw new Exception('Not implemented');
     }
 }
 

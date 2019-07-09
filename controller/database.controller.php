@@ -1,11 +1,13 @@
 <?php
 
+require_once(dirname(__DIR__, 1) . DIRECTORY_SEPARATOR . 'config.php' );
+
 class DatabaseController
 {
-    private $servername = 'localhost';
-    private $username = 'root';
-    private $password = '';
-    private $dbname = 'matriculaonline';
+    private $servername;
+    private $username;
+    private $password;
+    private $dbname;
     public $conn;
 
     private static $_instance;
@@ -23,6 +25,14 @@ class DatabaseController
 
     public function __construct()
     {
+        // Configure
+        global $config;
+        $this->servername = $config['database']['host'];
+        $this->username = $config['database']['user'];
+        $this->password = $config['database']['password'];
+        $this->dbname = $config['database']['name'];
+
+        // Establish connection
         $this->conn = $this->connect();
     }
 
@@ -84,7 +94,10 @@ class DatabaseController
 
         // Execute
         $stmt->execute();
-        //var_dump($stmt->error);
+
+        // Error logging
+        if ( !is_null($stmt->error) )
+            error_log(__FILE__ . ' | ' . $stmt->error);
 
         // Prepare data to return
         if ($close) {

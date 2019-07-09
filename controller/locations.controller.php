@@ -2,7 +2,7 @@
 
 require_once('database.controller.php');
 
-class AgglomeratesController
+class LocationsController
 {
     /* ==================================================================
      * Constructor & Properties
@@ -28,14 +28,28 @@ class AgglomeratesController
      * Functions
      * ================================================================== */
 
-    public function get()
+    public function get($factor_value = false)
     {
-		throw new Exception('Not implemented');
+      $queryInfo = [
+        'query' => 'SELECT * FROM locations WHERE external_id_locations = ?',
+        'parameters' => array('i', $factor_value),
+        'close' => FALSE
+      ];
+
+      $queryResult = $this->db->query($queryInfo['query'], $queryInfo['parameters'], $queryInfo['close']);
+      return $queryResult;
     }
 
-    public function insert()
+    public function insert($external_id_locations, $slug_locations, $name_locations)
     {
-		throw new Exception('Not implemented');
+      $queryInfo = [
+        'query' => 'INSERT INTO locations (external_id_locations, slug_locations, name_locations) VALUES (?, ?, ?)',
+        'parameters' => array('iss', $external_id_locations, $slug_locations, $name_locations),
+        'close' => TRUE
+      ];
+
+      $queryResult = $this->db->query($queryInfo['query'], $queryInfo['parameters'], $queryInfo['close']);
+      return $queryResult;
     }
 
     public function update()
