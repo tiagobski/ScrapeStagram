@@ -96,7 +96,7 @@ class DatabaseController
         $stmt->execute();
 
         // Error logging
-        if ( !is_null($stmt->error) )
+        if ( !empty($stmt->error) )
             error_log(__FILE__ . ' | ' . $stmt->error);
 
         // Prepare data to return

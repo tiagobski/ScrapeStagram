@@ -101,7 +101,7 @@ function Scrape($username, $loggingEnabled = false)
     $jsonObject = GetInstagramPageJson($url, false);
 
     // Catch error
-    if ( $jsonObject === false )
+    if ( $jsonObject === false || !is_string($jsonObject) )
     {
         error_log('Error: Failed fetching json data.');
         return false;
